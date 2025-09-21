@@ -1,0 +1,136 @@
+networks:
+  postgres-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  primary_data:
+  replica1_data:
+  replica2_data:
+
+services:
+  # ----- Primary -----
+  postgres-primary:
+    image: postgres:15
+    container_name: postgres-primary
+    hostname: postgres-primary
+    environment:
+      # Create the default superuser in the official image
+      POSTGRES_DB: healthcare_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      # Variables our scripts use to connect as superuser
+      PGUSER: postgres
+      PGPASSWORD: postgres_password
+    volumes:
+      - primary_data:/var/lib/postgresql/data
+      - ./config/primary/postgresql.conf:/etc/postgresql/conf.d/postgresql.conf:ro
+      - ./config/primary/pg_hba.conf:/etc/postgresql/conf.d/pg_hba.conf:ro
+      - ./scripts:/scripts:ro
+      - ./sql:/sql:ro                      # mount SQL here; scripts read from /sql
+    env_file:
+      - .env.test                          # switch to .env.prod for prod-like mode
+    command: ["bash", "/scripts/entrypoint-primary.sh"]
+    ports:
+      - "5432:5432"
+    networks:
+      postgres-cluster:
+        ipv4_address: 172.28.0.10
+    healthcheck:
+      # healthcheck matches the superuser we created above
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ----- Replica #1 -----
+  postgres-replica1:
+    image: postgres:15
+    container_name: postgres-replica1
+    hostname: postgres-replica1
+    environment:
+      # superuser creds used by pg_isready, etc.
+      PGUSER: postgres
+      PGPASSWORD: postgres_password
+      # replication user used by 10-init-replica.sh (must match what primary creates)
+      REPL_USER: replicator
+      REPL_PASSWORD: replicator_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+    volumes:
+      - replica1_data:/var/lib/postgresql/data
+      - ./config/replica/postgresql.conf:/etc/postgresql/conf.d/postgresql.conf:ro
+      - ./scripts:/scripts:ro
+    command: ["bash", "/scripts/entrypoint-replica.sh"]
+    ports:
+      - "5433:5432"
+    depends_on:
+      - postgres-primary
+    networks:
+      postgres-cluster:
+        ipv4_address: 172.28.0.11
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ----- Replica #2 -----
+  postgres-replica2:
+    image: postgres:15
+    container_name: postgres-replica2
+    hostname: postgres-replica2
+    environment:
+      PGUSER: postgres
+      PGPASSWORD: postgres_password
+      REPL_USER: replicator
+      REPL_PASSWORD: replicator_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+    volumes:
+      - replica2_data:/var/lib/postgresql/data
+      - ./config/replica/postgresql.conf:/etc/postgresql/conf.d/postgresql.conf:ro
+      - ./scripts:/scripts:ro
+    command: ["bash", "/scripts/entrypoint-replica.sh"]
+    ports:
+      - "5434:5432"
+    depends_on:
+      - postgres-primary
+    networks:
+      postgres-cluster:
+        ipv4_address: 172.28.0.12
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ----- Postgres Exporter -----
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    environment:
+      # scrape the primary with the superuser set above
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres_password@postgres-primary:5432/postgres?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres-primary
+    networks:
+      postgres-cluster:
+        ipv4_address: 172.28.0.20
+
+  # ----- Prometheus -----
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      postgres-cluster:
+        ipv4_address: 172.28.0.21
+
