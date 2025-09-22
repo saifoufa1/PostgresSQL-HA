@@ -436,19 +436,6 @@ echo "- Network: Internet connectivity"
 
 </div>
 
-### **⚡ Quick Health Check**
-
-```bash
-# Verify Docker installation
-docker --version && docker compose version
-
-# Check available resources
-echo "Available Memory:" && free -h
-echo "Available Disk Space:" && df -h
-
-# Test network connectivity
-curl -s http://httpbin.org/ip
-```
 
 ---
 
