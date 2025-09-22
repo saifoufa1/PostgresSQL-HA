@@ -7,7 +7,6 @@
 [![pg_auto_failover](https://img.shields.io/badge/pg__auto__failover-2.0+-green.svg?style=for-the-badge&logo=citusdata)](https://github.com/citusdata/pg_auto_failover)
 [![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange.svg?style=for-the-badge&logo=prometheus)](https://prometheus.io)
 [![Grafana](https://img.shields.io/badge/Grafana-Dashboards-yellow.svg?style=for-the-badge&logo=grafana)](https://grafana.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
 **Production-Ready PostgreSQL High Availability Testing Environment**
 
@@ -94,6 +93,40 @@
 | **Prometheus** | Metrics aggregation | `prometheus` | 172.28.0.21 | 9090 | Scrapes exporter data |
 | **Grafana** | Visualization | `grafana` | 172.28.0.30 | 3000 | Pre-built dashboards |
 
+### 🔗 Network Architecture
+
+```
+Internet/Docker Network
+         │
+    ┌────▼────┐
+    │ Clients │
+    │ Apps    │
+    └────┬────┘
+         │
+    ┌────▼────┐    ┌─────────────────┐
+    │ Load    │    │   Monitoring    │
+    │ Balancer│◄──►│   Stack         │
+    │ (Future)│    │                 │
+    └────┬────┘    │  Grafana:3000   │
+         │         │  Prometheus:9090│
+    ┌────▼────┐    │  Exporter:9187  │
+    │         │    └─────────────────┘
+    │  HA     │
+    │ Cluster │
+    │         │
+    │  ┌─────▼─────┐  ┌─────────────┐
+    │  │ Primary   │  │  Monitor    │
+    │  │ Node      │  │  Node       │
+    │  │ 5432      │  │  5431       │
+    │  └─────┬─────┘  └─────┬───────┘
+    │        │             │
+    │  ┌─────▼─────┐  ┌────▼────┐
+    │  │ Replica 1 │  │ Replica 2│
+    │  │ 5433      │  │ 5434    │
+    │  └───────────┘  └─────────┘
+    └──────────────────────────┘
+```
+
 ### 🎯 Key Features
 
 - **Automated Failover**: Zero-downtime PostgreSQL cluster with intelligent failover orchestration
@@ -118,20 +151,22 @@ cd PostgresSQL-HA
 
 ### 2. **Launch the Stack**
 ```bash
-# Copy test configuration
+# For development/testing (recommended for first-time setup)
 cp .env.test .env
+docker compose --env-file .env.test up -d --build
 
-# Start all services
-docker compose --env-file .env up -d --build
+# OR for production-like environment
+# cp .env.prod .env
+# docker compose --env-file .env.prod up -d --build
 ```
 
 ### 3. **Verify Deployment**
 ```bash
 # Check container status
-docker compose --env-file .env ps
+docker compose --env-file .env.test ps
 
 # Verify cluster state
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 ```
 
 ### 4. **Access Dashboards**
@@ -153,6 +188,47 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 **✅ Expected Result**: One primary + two replica nodes, with Grafana showing real-time metrics
 
 </div>
+
+---
+
+## 🌍 Environment Configuration
+
+### **Environment Files Overview**
+
+The lab provides two pre-configured environment files for different use cases:
+
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| **`.env.test`** | Development & Testing | Learning, development, testing features |
+| **`.env.prod`** | Production-like Setup | Production simulation, security testing |
+
+### **Environment Variables Comparison**
+
+| Variable | `.env.test` | `.env.prod` | Description |
+|----------|-------------|-------------|-------------|
+| `LOAD_SCHEMA` | `true` | `true` | Load database schema on startup |
+| `LOAD_TEST_DATA` | `true` | `false` | Load sample healthcare data |
+| `APP_USER` | `admin` | `root` | Application user name |
+| `APP_PASSWORD` | `admin` | `root` | Application user password |
+| `POSTGRES_PASSWORD` | `postgres_password` | `change_me_prod` | PostgreSQL superuser password |
+| `PG_HBA_CIDR` | `0.0.0.0/0` | `172.28.0.0/24` | Allowed client IP range |
+| `LOG_LEVEL` | `all` | `ddl` | PostgreSQL log verbosity |
+
+### **Switching Between Environments**
+
+```bash
+# For development/testing (default)
+cp .env.test .env
+docker compose --env-file .env.test up -d
+
+# For production-like environment
+cp .env.prod .env
+docker compose --env-file .env.prod up -d
+
+# Or use directly without copying
+docker compose --env-file .env.test up -d
+docker compose --env-file .env.prod up -d
+```
 
 ---
 
@@ -430,7 +506,7 @@ Variable | Purpose | Default (.env.test)
 
 | Step | Command | Expected Result |
 |------|---------|----------------|
-| **1. Check cluster state** | `docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh \| jq` | Monitor shows 1 primary, 2 replicas |
+| **1. Check cluster state** | `docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh \| jq` | Monitor shows 1 primary, 2 replicas |
 | **2. Verify primary node** | `PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db -c "SELECT pg_is_in_recovery();"` | Returns `f` (not in recovery) |
 | **3. Check replica status** | `PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare_db -c "SELECT pg_is_in_recovery();"` | Returns `t` (in recovery) |
 | **4. Verify data replication** | Check record count on both nodes | Both nodes show same record count |
@@ -439,7 +515,7 @@ Variable | Purpose | Default (.env.test)
 
 ```bash
 # Execute all checks
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db \
   -c "SELECT pg_is_in_recovery();"
@@ -454,22 +530,22 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare
 
 ```bash
 # 1. Identify current primary
-CURRENT_PRIMARY=$(docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.reportedstate == "primary") | .nodename')
+CURRENT_PRIMARY=$(docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.reportedstate == "primary") | .nodename')
 echo "Current primary: $CURRENT_PRIMARY"
 
 # 2. Stop current primary
-docker compose --env-file .env stop $CURRENT_PRIMARY
+docker compose --env-file .env.test stop $CURRENT_PRIMARY
 
 # 3. Monitor failover (check every 5 seconds)
 echo "Monitoring failover..."
 for i in {1..12}; do
   echo "Attempt $i/12..."
-  docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+  docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
   sleep 5
 done
 
 # 4. Verify new primary
-NEW_PRIMARY=$(docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.reportedstate == "primary") | .nodename')
+NEW_PRIMARY=$(docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.reportedstate == "primary") | .nodename')
 echo "New primary: $NEW_PRIMARY"
 
 # 5. Test data consistency
@@ -477,7 +553,7 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
   -c "SELECT COUNT(*) FROM patients;"
 
 # 6. Restart old primary
-docker compose --env-file .env start $CURRENT_PRIMARY
+docker compose --env-file .env.test start $CURRENT_PRIMARY
 ```
 
 **Expected Results**:
@@ -492,16 +568,16 @@ docker compose --env-file .env start $CURRENT_PRIMARY
 
 ```bash
 # 1. Check current state
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 # 2. Perform controlled failover
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/perform-failover.sh
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/perform-failover.sh
 
 # 3. Monitor the transition
 echo "Monitoring controlled failover..."
 for i in {1..6}; do
   echo "Attempt $i/6..."
-  docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+  docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
   sleep 5
 done
 
@@ -538,7 +614,7 @@ curl -s http://localhost:9090/api/v1/query?query=pg_auto_failover_node_state_hea
 curl -s http://localhost:9187/metrics | grep -E "(pg_auto_failover|pg_stat_replication)" | head -10
 
 # 4. Check monitor database directly
-docker compose --env-file .env exec pgaf-monitor \
+docker compose --env-file .env.test exec pgaf-monitor \
   psql -U postgres -d pg_auto_failover \
   -c 'SELECT nodeid, nodename, reportedstate, health FROM pgautofailover.node;'
 ```
@@ -578,7 +654,7 @@ EOF
 PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db -f load_test.sql
 
 # 3. Verify replication lag
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 # 4. Check replication status
 PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare_db \
@@ -604,7 +680,7 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 # (optional) copy the desired profile
 cp .env.test .env
 
-# bring everything up
+# bring everything up (using .env.test for development)
 docker compose --env-file .env.test up -d --build
 
 # verify containers
@@ -648,9 +724,9 @@ docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/perform-fai
 
 ### Failure Drill
 
-1. Stop current primary (`pgaf-node1` is the container name):
+1. Stop current primary (`postgres-primary` is the container name):
    ```bash
-   docker compose --env-file .env.test stop pgaf-node1
+   docker compose --env-file .env.test stop postgres-primary
    ```
 2. Monitor promotion:
    ```bash
@@ -660,7 +736,7 @@ docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/perform-fai
 3. Point clients at the new writable port (host 5433 or 5434, depending on promoted node).
 4. Restart the old primary:
    ```bash
-   docker compose --env-file .env.test start pgaf-node1
+   docker compose --env-file .env.test start postgres-primary
    ```
    The keeper reclones automatically and rejoins as `secondary`.
 5. Confirm state once more with `show-state.sh`.
@@ -701,8 +777,8 @@ Add additional Grafana dashboards or Prometheus alert rules as desired.
 Drill | Command | Expected Result
 ----- | ------- | ---------------
 Fresh bootstrap | `docker compose --env-file .env.test up -d --build` | Monitor healthy, primary promoted, replicas streaming (Grafana reachable at <http://localhost:3000>).
-Failover | `docker compose --env-file .env.test stop pgaf-node1` | Promotion within ~30?s, exporter metrics continue.
-Rejoin | `docker compose --env-file .env.test start pgaf-node1` | Restarted keeper returns as `secondary` without manual steps.
+Failover | `docker compose --env-file .env.test stop postgres-primary` | Promotion within ~30?s, exporter metrics continue.
+Rejoin | `docker compose --env-file .env.test start postgres-primary` | Restarted keeper returns as `secondary` without manual steps.
 Monitoring | `curl http://localhost:9187/metrics` | Metrics include `pg_auto_failover_*` and `pg_stat_replication*` series.
 
 ---
@@ -773,7 +849,7 @@ echo "Starting comprehensive failover test..."
 
 # 1. Pre-failover health check
 echo "✓ Pre-failover health check"
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 # 2. Start background load
 echo "✓ Starting background load"
@@ -782,13 +858,13 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 
 # 3. Trigger failover
 echo "✓ Triggering failover"
-docker compose --env-file .env stop postgres-primary
+docker compose --env-file .env.test stop postgres-primary
 
 # 4. Monitor recovery
 echo "✓ Monitoring recovery..."
 for i in {1..12}; do
   echo "Check $i/12..."
-  docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq '.nodes[] | {name: .nodename, state: .reportedstate}'
+  docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq '.nodes[] | {name: .nodename, state: .reportedstate}'
   sleep 5
 done
 
@@ -818,10 +894,10 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 ```bash
 # Measure actual failover time
 START=$(date +%s.%3N)
-docker compose --env-file .env stop postgres-primary
+docker compose --env-file .env.test stop postgres-primary
 
 while true; do
-  STATE=$(docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.nodename == "node2") | .reportedstate')
+  STATE=$(docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq -r '.nodes[] | select(.nodename == "node2") | .reportedstate')
   if [ "$STATE" = "primary" ]; then
     END=$(date +%s.%3N)
     DURATION=$(echo "$END - $START" | bc)
@@ -842,7 +918,7 @@ done
 2. **Clone your fork**: `git clone https://github.com/your-username/postgresql-ha-challenge.git`
 3. **Create feature branch**: `git checkout -b feature/amazing-feature`
 4. **Set up environment**: `cp .env.test .env`
-5. **Start development environment**: `docker compose --env-file .env up -d`
+5. **Start development environment**: `docker compose --env-file .env.test up -d`
 6. **Make changes** and test thoroughly
 7. **Submit pull request** with detailed description
 
@@ -866,19 +942,7 @@ done
 
 <div align="center">
 
-## 📄 License & Support
-
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/saifoufa1/PostgresSQL-HA.svg?style=flat-square)](https://github.com/saifoufa1/PostgresSQL-HA/issues)
-[![GitHub stars](https://img.shields.io/github/stars/saifoufa1/PostgresSQL-HA.svg?style=flat-square)](https://github.com/saifoufa1/PostgresSQL-HA/stargazers)
-
-**This project is licensed under the MIT License** - see the [LICENSE](LICENSE) file for details.
-
-### 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### 📞 Support
+## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/saifoufa1/PostgresSQL-HA/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/saifoufa1/PostgresSQL-HA/discussions)
@@ -896,11 +960,11 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 | Action | Command |
 |--------|---------|
-| **Start Lab** | `docker compose --env-file .env up -d --build` |
-| **Check Status** | `docker compose --env-file .env ps` |
-| **View Logs** | `docker compose --env-file .env logs -f` |
-| **Stop Lab** | `docker compose --env-file .env down` |
-| **Reset Lab** | `docker compose --env-file .env down -v` |
+| **Start Lab** | `docker compose --env-file .env.test up -d --build` |
+| **Check Status** | `docker compose --env-file .env.test ps` |
+| **View Logs** | `docker compose --env-file .env.test logs -f` |
+| **Stop Lab** | `docker compose --env-file .env.test down` |
+| **Reset Lab** | `docker compose --env-file .env.test down -v` |
 
 ### **Monitoring Access**
 
@@ -936,19 +1000,21 @@ lsof -i :5432
 # Modify ports in docker-compose.yml or stop conflicting services
 ```
 
+**Environment File**: Use `.env.test` for development or `.env.prod` for production-like testing.
+
 #### Issue 2: Monitor Connection Failures
 **Problem**: PostgreSQL nodes can't connect to monitor.
 
 **Solution**:
 ```bash
 # Check monitor logs
-docker compose --env-file .env logs pgaf-monitor
+docker compose --env-file .env.test logs pgaf-monitor
 
 # Verify monitor is listening
-docker compose --env-file .env exec pgaf-monitor netstat -tlnp | grep 5431
+docker compose --env-file .env.test exec pgaf-monitor netstat -tlnp | grep 5431
 
 # Test monitor connectivity
-docker compose --env-file .env exec postgres-primary \
+docker compose --env-file .env.test exec postgres-primary \
   psql -h pgaf-monitor -p 5431 -U autoctl_node -d pg_auto_failover -c "SELECT 1;"
 ```
 
@@ -958,15 +1024,15 @@ docker compose --env-file .env exec postgres-primary \
 **Solution**:
 ```bash
 # Check node health
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 # Verify heartbeat settings
-docker compose --env-file .env exec pgaf-monitor \
+docker compose --env-file .env.test exec pgaf-monitor \
   psql -U postgres -d pg_auto_failover \
   -c "SELECT * FROM pgautofailover.formation;"
 
 # Check keeper logs
-docker compose --env-file .env logs postgres-primary
+docker compose --env-file .env.test logs postgres-primary
 ```
 
 #### Issue 4: Data Inconsistency After Failover
@@ -986,7 +1052,7 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare
   -c "SELECT COUNT(*) FROM patients;"
 
 # Check for replication lag
-docker compose --env-file .env exec pgaf-monitor \
+docker compose --env-file .env.test exec pgaf-monitor \
   psql -U postgres -d pg_auto_failover \
   -c "SELECT nodeid, reportedlsn, health FROM pgautofailover.node;"
 ```
@@ -1003,28 +1069,28 @@ curl -s http://localhost:9090/-/healthy
 curl -s http://localhost:9187/metrics | head -5
 
 # Check Grafana logs
-docker compose --env-file .env logs grafana
+docker compose --env-file .env.test logs grafana
 
 # Restart monitoring stack
-docker compose --env-file .env restart prometheus grafana postgres-exporter
+docker compose --env-file .env.test restart prometheus grafana postgres-exporter
 ```
 
 ### Debug Commands
 
 ```bash
 # Complete cluster status
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
 # Monitor database contents
-docker compose --env-file .env exec pgaf-monitor \
+docker compose --env-file .env.test exec pgaf-monitor \
   psql -U postgres -d pg_auto_failover \
   -c "SELECT * FROM pgautofailover.node ORDER BY nodeid;"
 
 # PostgreSQL logs
-docker compose --env-file .env logs -f postgres-primary
+docker compose --env-file .env.test logs -f postgres-primary
 
 # Network connectivity
-docker compose --env-file .env exec postgres-primary \
+docker compose --env-file .env.test exec postgres-primary \
   pg_isready -h pgaf-monitor -p 5431 -U autoctl_node
 
 # Metrics verification
