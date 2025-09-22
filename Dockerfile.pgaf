@@ -1,0 +1,12 @@
+FROM postgres:15
+
+RUN set -euxo pipefail \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends pg-auto-failover-cli postgresql-15-auto-failover jq locales \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/usr/lib/postgresql/15/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    PG_AUTOCTL_DEBUG=0
+
+COPY --chmod=755 scripts/pgaf /opt/pgaf
+

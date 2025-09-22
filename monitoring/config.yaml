@@ -1,0 +1,191 @@
+# PostgreSQL HA Monitor Configuration
+
+# Database connection settings
+database:
+  # pg_auto_failover monitor connection
+  monitor_host: "localhost"
+  monitor_port: 5431
+  monitor_database: "pg_auto_failover"
+  monitor_user: "autoctl_node"
+  monitor_password: "autoctl_node"
+
+  # PostgreSQL superuser credentials (for node connections)
+  postgres_user: "postgres"
+  postgres_password: "postgres_password"
+
+# Node configurations (override defaults from docker-compose.yml)
+nodes:
+  primary:
+    host: "localhost"
+    port: 5432
+    name: "postgres-primary"
+  replica1:
+    host: "localhost"
+    port: 5433
+    name: "postgres-replica1"
+  replica2:
+    host: "localhost"
+    port: 5434
+    name: "postgres-replica2"
+
+# Monitoring thresholds
+thresholds:
+  # Maximum replication lag in bytes before alerting
+  max_replication_lag_bytes: 1048576  # 1MB
+
+  # Maximum replication lag in seconds before alerting
+  max_replication_lag_seconds: 30
+
+  # Connection timeout for database connections
+  connection_timeout_seconds: 5
+
+  # Health check interval in seconds
+  health_check_interval_seconds: 30
+
+  # Number of consecutive failures before marking node unhealthy
+  max_consecutive_failures: 3
+
+# Alerting configuration
+alerting:
+  # Email alerting
+  email:
+    enabled: true
+    smtp_server: "localhost"
+    smtp_port: 587
+    smtp_username: ""
+    smtp_password: ""
+    from_email: "pg-ha-monitor@example.com"
+    to_emails:
+      - "admin@example.com"
+      - "dba@example.com"
+
+  # Webhook alerting (for integration with external systems)
+  webhooks:
+    enabled: true
+    urls:
+      - "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+      - "https://api.example.com/alerts"
+
+  # Alert rules configuration
+  rules:
+    # Critical alerts
+    no_primary:
+      enabled: true
+      severity: "critical"
+      cooldown_minutes: 1  # Alert immediately for critical issues
+
+    multiple_primaries:
+      enabled: true
+      severity: "critical"
+      cooldown_minutes: 1
+
+    # Warning alerts
+    unhealthy_nodes:
+      enabled: true
+      severity: "warning"
+      cooldown_minutes: 5
+
+    high_replication_lag:
+      enabled: true
+      severity: "warning"
+      cooldown_minutes: 10
+
+    # Info alerts
+    failover_not_ready:
+      enabled: false  # Disabled by default to reduce noise
+      severity: "info"
+      cooldown_minutes: 30
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file_path: "monitoring/pg_ha_monitor.log"
+  max_file_size_mb: 100
+  backup_count: 5
+
+  # Log specific events
+  log_health_checks: true
+  log_alerts: true
+  log_failover_tests: true
+
+# Reporting configuration
+reporting:
+  # Generate detailed reports
+  generate_detailed_reports: true
+  report_file_path: "monitoring/cluster_report.txt"
+
+  # Report format options
+  include_node_details: true
+  include_performance_metrics: true
+  include_recommendations: true
+
+# Performance monitoring
+performance:
+  # Enable performance metrics collection
+  enabled: true
+
+  # Metrics to collect
+  collect_query_stats: true
+  collect_connection_stats: true
+  collect_wal_stats: true
+
+  # Performance thresholds
+  max_connections_threshold: 100
+  slow_query_threshold_seconds: 5.0
+
+# Failover testing
+failover_testing:
+  # Enable automatic failover testing
+  enabled: false  # Disabled by default for safety
+
+  # Test schedule (cron format)
+  schedule: "0 */6 * * *"  # Every 6 hours
+
+  # Test parameters
+  test_primary_failure: true
+  test_replica_promotion: true
+  test_data_consistency: true
+
+  # Safety checks
+  require_minimum_replicas: 1
+  skip_during_maintenance: true
+
+# Integration settings
+integration:
+  # Prometheus integration
+  prometheus:
+    enabled: true
+    gateway_url: "http://localhost:9091"
+    job_name: "pg-ha-monitor"
+
+  # Grafana integration
+  grafana:
+    enabled: false
+    url: "http://localhost:3000"
+    api_key: ""
+    dashboard_uid: ""
+
+# Maintenance mode
+maintenance:
+  # Enable maintenance mode to suppress alerts
+  enabled: false
+  reason: ""
+  until: ""
+
+# Advanced configuration
+advanced:
+  # Connection pool settings
+  connection_pool:
+    min_connections: 1
+    max_connections: 10
+    connection_timeout: 30
+    retry_attempts: 3
+    retry_delay_seconds: 1
+
+  # Query optimization
+  query_timeout_seconds: 30
+  long_query_threshold_seconds: 10
+
+  # Memory management
+  max_memory_usage_mb: 500
+  cleanup_interval_minutes: 60

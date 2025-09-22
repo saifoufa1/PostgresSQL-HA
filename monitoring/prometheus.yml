@@ -2,6 +2,6 @@ global:
   scrape_interval: 30s
 
 scrape_configs:
-  - job_name: 'postgres'
+  - job_name: 'pgaf_nodes'
     static_configs:
       - targets: ['postgres-exporter:9187']

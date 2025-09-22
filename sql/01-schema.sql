@@ -1,5 +1,4 @@
 -- Schema definition for healthcare_db
-\c healthcare_db;
 
 -- Ensure UUID generation is available for default keys
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

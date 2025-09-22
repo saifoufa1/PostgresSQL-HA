@@ -1,0 +1,6 @@
+﻿apiVersion: 1
+
+dashboards:
+  - name: pg_auto_failover
+    options:
+      path: /etc/grafana/provisioning/dashboards

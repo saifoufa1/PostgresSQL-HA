@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "alerts.yml"
+
+scrape_configs:
+  # Monitor the pg-ha-monitor itself
+  - job_name: 'pg-ha-monitor'
+    static_configs:
+      - targets: ['pg-ha-monitor:8000']
+    scrape_interval: 10s
+
+  # Monitor the PostgreSQL HA cluster
+  - job_name: 'postgresql-ha'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 15s
+
+  # Monitor pg_auto_failover monitor
+  - job_name: 'pg-auto-failover-monitor'
+    static_configs:
+      - targets: ['pgaf-monitor:5431']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
