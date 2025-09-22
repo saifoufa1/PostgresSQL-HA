@@ -1,17 +1,100 @@
 # 🏥 PostgreSQL High Availability Lab
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://postgresql.org)
-[![pg_auto_failover](https://img.shields.io/badge/pg__auto__failover-2.0+-green.svg)](https://github.com/citusdata/pg_auto_failover)
-[![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange.svg)](https://prometheus.io)
-[![Grafana](https://img.shields.io/badge/Grafana-Dashboards-yellow.svg)](https://grafana.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<div align="center">
 
-> **Production-Ready PostgreSQL High Availability Testing Environment**
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg?style=for-the-badge&logo=docker)](https://docker.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg?style=for-the-badge&logo=postgresql)](https://postgresql.org)
+[![pg_auto_failover](https://img.shields.io/badge/pg__auto__failover-2.0+-green.svg?style=for-the-badge&logo=citusdata)](https://github.com/citusdata/pg_auto_failover)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange.svg?style=for-the-badge&logo=prometheus)](https://prometheus.io)
+[![Grafana](https://img.shields.io/badge/Grafana-Dashboards-yellow.svg?style=for-the-badge&logo=grafana)](https://grafana.com)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+
+**Production-Ready PostgreSQL High Availability Testing Environment**
+
+[📖 Documentation](#-documentation) • [🚀 Quick Start](#-quick-start) • [📊 Architecture](#-architecture-overview) • [🧪 Testing](#-comprehensive-testing-guide)
+
+</div>
+
+---
+
+> **🎯 Production-Ready PostgreSQL High Availability Testing Environment**
 >
 > This repository provides a complete PostgreSQL HA lab using pg_auto_failover with automated failover, monitoring, and comprehensive testing scenarios. Perfect for learning, testing, and demonstrating PostgreSQL high availability concepts.
 
 ## 🎯 What This Lab Provides
+
+<div align="center">
+
+| Feature | Description |
+|---------|-------------|
+| **🔄 Automated Failover** | Zero-downtime PostgreSQL cluster with intelligent failover orchestration |
+| **📊 Production Monitoring** | Real-time metrics with Prometheus and Grafana dashboards |
+| **🏥 Healthcare Dataset** | Realistic test data for performance and functionality testing |
+| **🧪 Easy Testing** | Pre-configured scenarios for common HA testing patterns |
+| **🐳 Docker-Native** | Complete containerized environment for consistent deployments |
+
+</div>
+
+## 📊 Architecture Overview
+
+<div align="center">
+
+```
+🏥 PostgreSQL HA Architecture
+```
+
+```
+                                    ┌─────────────────────────────────────┐
+                                    │           🖥️  Grafana               │
+                                    │         Dashboards                  │
+                                    │         localhost:3000              │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                                    ┌─────────────────▼───────────────────┐
+                                    │           📊 Prometheus             │
+                                    │         Metrics Collection          │
+                                    │         localhost:9090              │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                                    ┌─────────────────▼───────────────────┐
+                                    │           📈 postgres-exporter      │
+                                    │         Metrics Collection          │
+                                    │         localhost:9187              │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                                    ┌─────────────────▼───────────────────┐
+                                    │           🎯 pg_auto_failover       │
+                                    │           Monitor                   │
+                                    │           localhost:5431            │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                                    ┌─────────────────▼───────────────────┐
+                                    │           🏥 PostgreSQL Cluster     │
+                                    │           High Availability         │
+                                    └─────────────────┬───────────────────┘
+                                                      │
+                                    ┌─────────────────▼──────────────────────────────────┐
+                                    │  Primary Node  │  Replica Node 1 │  Replica Node 2 │
+                                    │  localhost:5432│  localhost:5433 │  localhost:5434 │
+                                    │  Priority: 100 │  Priority: 90   │  Priority: 80   │
+                                    └────────────────┴─────────────────┴─────────────────┘
+```
+
+</div>
+
+### 🏗️ System Components
+
+| Component | Role | Container | Static IP | Host Ports | Description |
+|-----------|------|-----------|-----------|------------|-------------|
+| **pg_auto_failover Monitor** | Orchestrates failover & health monitoring | `pgaf-monitor` | 172.28.0.5 | 5431 | Central coordination point |
+| **PostgreSQL Primary** | Active read/write database | `postgres-primary` | 172.28.0.10 | 5432, 6010 | Bootstrap applies schema/data |
+| **PostgreSQL Replica 1** | Read-only standby | `postgres-replica1` | 172.28.0.11 | 5433, 6011 | Preferred failover target |
+| **PostgreSQL Replica 2** | Read-only standby | `postgres-replica2` | 172.28.0.12 | 5434, 6012 | Secondary failover target |
+| **postgres-exporter** | Metrics collection | `postgres-exporter` | 172.28.0.20 | 9187 | Tracks writable node |
+| **Prometheus** | Metrics aggregation | `prometheus` | 172.28.0.21 | 9090 | Scrapes exporter data |
+| **Grafana** | Visualization | `grafana` | 172.28.0.30 | 3000 | Pre-built dashboards |
+
+### 🎯 Key Features
 
 - **Automated Failover**: Zero-downtime PostgreSQL cluster with intelligent failover orchestration
 - **Production Monitoring**: Real-time metrics with Prometheus and Grafana dashboards
@@ -19,76 +102,148 @@
 - **Easy Testing**: Pre-configured scenarios for common HA testing patterns
 - **Docker-Native**: Complete containerized environment for consistent deployments
 
-## 📊 Architecture Overview
-
-This lab deploys a 3-node PostgreSQL cluster with:
-- **1 Monitor Node**: Orchestrates failover and health monitoring
-- **3 PostgreSQL Nodes**: Primary + 2 replicas with different failover priorities
-- **Monitoring Stack**: Prometheus metrics collection + Grafana dashboards
-- **Healthcare Database**: Realistic schema with sample patient/provider data
-
 ## 🚀 Quick Start
 
-Get the lab running in under 5 minutes:
+<div align="center">
 
+### **Get the lab running in under 5 minutes!**
+
+</div>
+
+### 1. **Clone & Setup**
 ```bash
-# 1. Clone and navigate to the repository
-git clone <repository-url>
-cd postgresql-ha-challenge
-
-# 2. Start the complete stack
-cp .env.test .env
-docker compose --env-file .env up -d --build
-
-# 3. Verify everything is running
-docker compose --env-file .env ps
-
-# 4. Check cluster status
-docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
-
-# 5. Access Grafana dashboard
-open http://localhost:3000 (admin/admin)
+git clone https://github.com/saifoufa1/PostgresSQL-HA.git
+cd PostgresSQL-HA
 ```
 
-**Expected Result**: You should see one primary and two replica nodes, with Grafana showing real-time metrics.
+### 2. **Launch the Stack**
+```bash
+# Copy test configuration
+cp .env.test .env
+
+# Start all services
+docker compose --env-file .env up -d --build
+```
+
+### 3. **Verify Deployment**
+```bash
+# Check container status
+docker compose --env-file .env ps
+
+# Verify cluster state
+docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+```
+
+### 4. **Access Dashboards**
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **Grafana** | http://localhost:3000 | `admin` / `admin` |
+| **Prometheus** | http://localhost:9090 | - |
+| **PostgreSQL** | localhost:5432 | `postgres` / `postgres_password` |
+
+### 5. **Test Database Connection**
+```bash
+# Connect to primary database
+PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db \
+  -c "SELECT COUNT(*) FROM medical_facilities;"
+```
+
+<div align="center">
+
+**✅ Expected Result**: One primary + two replica nodes, with Grafana showing real-time metrics
+
+</div>
 
 ## 🎯 Use Cases
 
-This lab is perfect for:
+<div align="center">
 
-- **Learning PostgreSQL HA**: Understand automated failover concepts
-- **Testing Applications**: Verify your app handles failovers gracefully
-- **Performance Benchmarking**: Test read/write patterns under different loads
-- **Disaster Recovery Planning**: Practice failover scenarios
-- **Monitoring Setup**: Learn production monitoring patterns
+### **Perfect For:**
+
+| Use Case | Description |
+|----------|-------------|
+| **🎓 Learning PostgreSQL HA** | Understand automated failover concepts |
+| **🔍 Testing Applications** | Verify your app handles failovers gracefully |
+| **⚡ Performance Benchmarking** | Test read/write patterns under different loads |
+| **🛡️ Disaster Recovery Planning** | Practice failover scenarios |
+| **📊 Monitoring Setup** | Learn production monitoring patterns |
+
+</div>
+
+---
+
+<div align="center">
+
+## 📚 Table of Contents
+
+| Section | Description |
+|---------|-------------|
+| [🚀 Quick Start](#-quick-start) | Get running in 5 minutes |
+| [📊 Architecture](#-architecture-overview) | System design and components |
+| [📋 Prerequisites](#-prerequisites) | System requirements and setup |
+| [🧪 Testing Guide](#-comprehensive-testing-guide) | Step-by-step testing procedures |
+| [🔧 Troubleshooting](#-troubleshooting) | Common issues and solutions |
+| [📖 Documentation](docs/) | Detailed guides and references |
+
+</div>
 
 ---
 
 ## 📋 Prerequisites
 
-### System Requirements
-- **Docker Engine**: 20.10 or higher
-- **Docker Compose**: Plugin 2.0 or higher
-- **Memory**: 8GB RAM minimum (12GB recommended)
-- **Storage**: 60GB free disk space
-- **Network**: Open ports 5431-5434, 6010-6012, 9090, 9187, 3000
+<div align="center">
 
-### Required Ports
-| Port | Service | Purpose |
-|------|---------|---------|
-| 5431 | pg_auto_failover Monitor | Cluster coordination |
-| 5432 | PostgreSQL Primary | Database connections |
-| 5433 | PostgreSQL Replica 1 | Read-only connections |
-| 5434 | PostgreSQL Replica 2 | Read-only connections |
-| 6010-6012 | pg_autoctl | Node management |
-| 9090 | Prometheus | Metrics UI |
-| 9187 | postgres-exporter | Metrics collection |
-| 3000 | Grafana | Dashboard UI |
+### **System Requirements**
 
-### Optional Tools
-- **jq**: For pretty-printing JSON cluster state
-- **psql**: PostgreSQL client for direct database access
-- **curl**: For API testing and metrics verification
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| **Docker Engine** | 20.10+ | Latest |
+| **Docker Compose** | Plugin 2.0+ | Latest |
+| **Memory (RAM)** | 8GB | 12GB+ |
+| **Storage** | 60GB free | 100GB+ SSD |
+| **CPU** | 4 cores | 8+ cores |
+
+</div>
+
+### **🔌 Required Ports**
+
+| Port Range | Service | Purpose |
+|------------|---------|---------|
+| **5431** | pg_auto_failover Monitor | Cluster coordination |
+| **5432** | PostgreSQL Primary | Database connections |
+| **5433** | PostgreSQL Replica 1 | Read-only connections |
+| **5434** | PostgreSQL Replica 2 | Read-only connections |
+| **6010-6012** | pg_autoctl | Node management |
+| **9090** | Prometheus | Metrics UI |
+| **9187** | postgres-exporter | Metrics collection |
+| **3000** | Grafana | Dashboard UI |
+
+### **🛠️ Optional Tools**
+
+<div align="center">
+
+| Tool | Purpose | Installation |
+|------|---------|--------------|
+| **jq** | JSON formatting | `apt install jq` / `brew install jq` |
+| **psql** | Database client | `apt install postgresql-client` |
+| **curl** | API testing | `apt install curl` / `brew install curl` |
+| **docker-compose** | Container orchestration | Included with Docker Desktop |
+
+</div>
+
+### **⚡ Quick Health Check**
+
+```bash
+# Verify Docker installation
+docker --version && docker compose version
+
+# Check available resources
+echo "Available Memory:" && free -h
+echo "Available Disk Space:" && df -h
+
+# Test network connectivity
+curl -s http://httpbin.org/ip
+```
 
 ---
 
@@ -132,37 +287,37 @@ Variable | Purpose | Default (.env.test)
 
 ## 🧪 Comprehensive Testing Guide
 
-This section provides step-by-step procedures for testing the PostgreSQL HA system. Each test scenario includes expected outcomes and verification steps.
+<div align="center">
 
-### Test 1: Basic Cluster Health Check
+### **Step-by-Step Testing Procedures**
 
-**Objective**: Verify the cluster is running correctly with proper role assignment.
+</div>
+
+### **Test 1: Basic Cluster Health Check** ✅
+
+**🎯 Objective**: Verify the cluster is running correctly with proper role assignment.
+
+<div align="center">
+
+| Step | Command | Expected Result |
+|------|---------|----------------|
+| **1. Check cluster state** | `docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh \| jq` | Monitor shows 1 primary, 2 replicas |
+| **2. Verify primary node** | `PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db -c "SELECT pg_is_in_recovery();"` | Returns `f` (not in recovery) |
+| **3. Check replica status** | `PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare_db -c "SELECT pg_is_in_recovery();"` | Returns `t` (in recovery) |
+| **4. Verify data replication** | Check record count on both nodes | Both nodes show same record count |
+
+</div>
 
 ```bash
-# 1. Check cluster state
+# Execute all checks
 docker compose --env-file .env exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
 
-# 2. Verify primary node
 PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db \
   -c "SELECT pg_is_in_recovery();"
 
-# 3. Check replica status
 PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare_db \
   -c "SELECT pg_is_in_recovery();"
-
-# 4. Verify data replication
-PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare_db \
-  -c "SELECT COUNT(*) FROM medical_facilities;"
-
-PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5433 -U postgres -d healthcare_db \
-  -c "SELECT COUNT(*) FROM medical_facilities;"
 ```
-
-**Expected Results**:
-- Monitor shows 1 primary, 2 replicas
-- Primary returns `f` (not in recovery)
-- Replicas return `t` (in recovery)
-- Both nodes show same record count
 
 ### Test 2: Automated Failover Testing
 
@@ -580,43 +735,74 @@ done
 
 ---
 
-## 📄 License
+<div align="center">
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📄 License & Support
+
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/saifoufa1/PostgresSQL-HA.svg?style=flat-square)](https://github.com/saifoufa1/PostgresSQL-HA/issues)
+[![GitHub stars](https://img.shields.io/github/stars/saifoufa1/PostgresSQL-HA.svg?style=flat-square)](https://github.com/saifoufa1/PostgresSQL-HA/stargazers)
+
+**This project is licensed under the MIT License** - see the [LICENSE](LICENSE) file for details.
+
+### 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/saifoufa1/PostgresSQL-HA/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/saifoufa1/PostgresSQL-HA/discussions)
+- **Documentation**: [Full Documentation](docs/)
+
+</div>
 
 ---
 
-## 10. Reference Commands
+## 🛠️ Quick Reference
 
-```bash
-# Tail keeper logs
-docker compose --env-file .env.test logs -f pgaf-node1
+<div align="center">
 
-# Monitor state snapshot
-docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/show-state.sh | jq
+### **Essential Commands**
 
-# Exporter metrics
-curl -s http://localhost:9187/metrics | head
-```
+| Action | Command |
+|--------|---------|
+| **Start Lab** | `docker compose --env-file .env up -d --build` |
+| **Check Status** | `docker compose --env-file .env ps` |
+| **View Logs** | `docker compose --env-file .env logs -f` |
+| **Stop Lab** | `docker compose --env-file .env down` |
+| **Reset Lab** | `docker compose --env-file .env down -v` |
 
-Reset the lab (including volumes) with:
-```bash
-docker compose --env-file .env down -v
-```
+### **Monitoring Access**
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Grafana** | http://localhost:3000 | Dashboards |
+| **Prometheus** | http://localhost:9090 | Metrics |
+| **PostgreSQL** | localhost:5432 | Database |
+
+</div>
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Common Issues and Solutions
+<div align="center">
 
-#### Issue 1: Port Conflicts
+### **Common Issues & Solutions**
+
+</div>
+
+### **🚨 Issue 1: Port Conflicts**
 **Problem**: Services fail to start due to port conflicts.
 
 **Solution**:
 ```bash
 # Check what's using the ports
 netstat -tulpn | grep -E ':(5431|5432|5433|5434|6010|6011|6012|9090|9187|3000)'
+
+# Or use lsof on macOS
+lsof -i :5432
 
 # Modify ports in docker-compose.yml or stop conflicting services
 ```
