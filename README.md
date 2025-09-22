@@ -394,11 +394,11 @@ Each keeper stores its data under `/var/lib/postgresql/pgdata`. The monitor data
 
 ## 3. Configuration Files
 
-- `docker-compose.yml` � service definitions (monitor, keepers, Prometheus, Grafana, exporter)
-- `scripts/pgaf/*.sh` � pg_auto_failover entrypoints and helper scripts (run automatically in containers)
-- `sql/01-schema.sql`, `sql/02-test-data.sql` � bootstrap schema + test data (applied once on initial primary only)
-- `monitoring/prometheus.yml` � Prometheus scrape config
-- `monitoring/grafana/` � provisioning for datasource + pg_auto_failover dashboard
+- `docker-compose.yml`  service definitions (monitor, keepers, Prometheus, Grafana, exporter)
+- `scripts/pgaf/*.sh`  pg_auto_failover entrypoints and helper scripts (run automatically in containers)
+- `sql/01-schema.sql`, `sql/02-test-data.sql`  bootstrap schema + test data (applied once on initial primary only)
+- `monitoring/prometheus.yml`  Prometheus scrape config
+- `monitoring/grafana/`  provisioning for datasource + pg_auto_failover dashboard
 
 Environment toggles (set via `.env.test` or `.env.prod`):
 
@@ -408,7 +408,7 @@ Variable | Purpose | Default (.env.test)
 `LOAD_TEST_DATA` | Load sample data | `true`
 `APP_USER` / `APP_PASSWORD` | Credentials for seeded application role | `admin` / `admin`
 `POSTGRES_PASSWORD` | Superuser password inside the keepers | `postgres_password`
-`PG_HBA_CIDR` | CIDR appended to every node�s `pg_hba.conf` to allow host/WSL connections | `0.0.0.0/0`
+`PG_HBA_CIDR` | CIDR appended to every nodes `pg_hba.conf` to allow host/WSL connections | `0.0.0.0/0`
 
 `.env.prod` mirrors these variables but defaults to more restrictive values (e.g. `PG_HBA_CIDR=172.28.0.0/24`).
 
