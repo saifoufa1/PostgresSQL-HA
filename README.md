@@ -154,6 +154,135 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 
 </div>
 
+---
+
+## 🔍 Quick Health Check
+
+<div align="center">
+
+### **Verify System Readiness Before Deployment**
+
+</div>
+
+### **1. Docker Installation Check**
+
+**Purpose**: Verify Docker and Docker Compose are properly installed and accessible.
+
+```bash
+# Windows
+docker --version && docker compose version
+
+# Linux/macOS
+docker --version && docker compose version
+```
+
+**What it checks**:
+- Docker Engine version and availability
+- Docker Compose plugin version
+- Basic Docker functionality
+
+**Expected Result**: Both commands should return version numbers without errors.
+
+### **2. System Resources Check**
+
+**Purpose**: Ensure sufficient system resources are available for the PostgreSQL HA lab.
+
+```bash
+# Windows - Check memory and disk space
+wmic OS get TotalVisibleMemorySize /value && wmic LogicalDisk where Name="C:" get Size,FreeSpace /value
+
+# Linux/macOS - Check memory and disk usage
+free -h && df -h
+```
+
+**What it checks**:
+- Available system memory (minimum 8GB recommended)
+- Free disk space (minimum 60GB recommended)
+- Current disk usage across filesystems
+
+**Expected Result**:
+- At least 8GB available memory
+- At least 60GB free disk space
+- No filesystems at 100% capacity
+
+### **3. Network Connectivity Check**
+
+**Purpose**: Verify internet connectivity for pulling Docker images and external API access.
+
+```bash
+# Cross-platform - Test basic connectivity
+curl -s http://httpbin.org/ip
+```
+
+**What it checks**:
+- Internet connectivity
+- DNS resolution
+- Basic network functionality
+
+**Expected Result**: Returns your public IP address in JSON format (e.g., `{"origin": "x.x.x.x"}`).
+
+### **Complete Health Check Script**
+
+```bash
+#!/bin/bash
+# Complete system health check for PostgreSQL HA Lab
+
+echo "🔍 PostgreSQL HA Lab - System Health Check"
+echo "=========================================="
+
+echo ""
+echo "1. Docker Installation Check:"
+echo "-----------------------------"
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    docker --version && docker compose version
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    docker --version && docker compose version
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    docker --version && docker compose version
+else
+    echo "Unsupported OS type: $OSTYPE"
+fi
+
+echo ""
+echo "2. System Resources Check:"
+echo "--------------------------"
+if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Memory Usage:"
+    free -h
+    echo ""
+    echo "Disk Usage:"
+    df -h
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    echo "Memory Information:"
+    wmic OS get TotalVisibleMemorySize /value
+    echo ""
+    echo "Disk Information:"
+    wmic LogicalDisk where Name="C:" get Size,FreeSpace /value
+fi
+
+echo ""
+echo "3. Network Connectivity Check:"
+echo "------------------------------"
+if command -v curl &> /dev/null; then
+    curl -s http://httpbin.org/ip
+else
+    echo "curl not found. Please install curl to test network connectivity."
+fi
+
+echo ""
+echo "✅ Health check completed!"
+echo ""
+echo "Minimum Requirements:"
+echo "- Docker: 20.10+"
+echo "- Memory: 8GB+ available"
+echo "- Disk: 60GB+ free space"
+echo "- Network: Internet connectivity"
+```
+
+**Usage**: Save the script above as `health-check.sh`, make it executable (`chmod +x health-check.sh`), and run it before starting the lab.
+
+---
+
 ## 🎯 Use Cases
 
 <div align="center">

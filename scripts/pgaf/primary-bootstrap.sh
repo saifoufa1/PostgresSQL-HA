@@ -30,6 +30,10 @@ if [[ -n "${POSTGRES_PASSWORD:-}" ]]; then
     -c "ALTER USER ${SUPERUSER} WITH PASSWORD '${POSTGRES_PASSWORD}';"
 fi
 
+echo "[pgaf-bootstrap] creating databases"
+export POSTGRES_SUPERUSER="${SUPERUSER}"
+/scripts/04-create-database.sh
+
 if [[ "${TARGET_DB}" != "postgres" ]]; then
   DB_EXISTS=$(psql -p "${PORT}" -U "${SUPERUSER}" -d postgres -Atc "SELECT 1 FROM pg_database WHERE datname='${TARGET_DB}';")
   if [[ "${DB_EXISTS}" != "1" ]]; then
