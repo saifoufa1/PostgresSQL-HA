@@ -439,7 +439,7 @@ echo "- Network: Internet connectivity"
 
 ---
 
-## 2. Topology Overview
+## 7. Topology Overview
 
 Component | Role | Container | Static IP | Host Ports | Persistent Volume
 --------- | ---- | --------- | --------- | ---------- | -----------------
@@ -455,7 +455,7 @@ Each keeper stores its data under `/var/lib/postgresql/pgdata`. The monitor data
 
 ---
 
-## 3. Configuration Files
+## 8. Configuration Files
 
 - `docker-compose.yml`  service definitions (monitor, keepers, Prometheus, Grafana, exporter)
 - `scripts/pgaf/*.sh`  pg_auto_failover entrypoints and helper scripts (run automatically in containers)
@@ -660,7 +660,7 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 
 ---
 
-## 4. First-Time Startup
+## 10. First-Time Startup
 
 ```bash
 # from repository root
@@ -693,7 +693,7 @@ PGPASSWORD=postgres_password psql -h 127.0.0.1 -p 5432 -U postgres -d healthcare
 
 ---
 
-## 5. Automated Failover Behaviour
+## 11. Automated Failover Behaviour
 
 The monitor polls each keeper every 5?s. If the primary misses three heartbeats, the monitor marks it unhealthy, elects the highest-priority standby, and instructs it to promote. Typical timings (default settings): detection ~10�15?s, promotion ~5�10?s, overall RTO ~20�30?s. Tune with `PG_AUTOCTL_*` environment variables if you need faster reaction.
 
@@ -730,7 +730,7 @@ docker compose --env-file .env.test exec pgaf-monitor bash /opt/pgaf/perform-fai
 
 ---
 
-## 6. Monitoring & Observability
+## 12. Monitoring & Observability
 
 - Exporter endpoint: <http://localhost:9187/metrics>
 - Prometheus UI: <http://localhost:9090>
@@ -751,7 +751,7 @@ Add additional Grafana dashboards or Prometheus alert rules as desired.
 
 ---
 
-## 7. Maintenance & Recovery
+## 13. Maintenance & Recovery
 
 - **Rolling maintenance:** stop a keeper (`docker compose stop <service>`), apply changes, then `docker compose start <service>`; pg_autoctl handles re-registration.
 - **Full reseed:** stop the keeper, remove its volume (`docker volume rm postgresql-ha-challenge_postgres-replica1`), restart the service; it reclones from the current primary.
@@ -759,7 +759,7 @@ Add additional Grafana dashboards or Prometheus alert rules as desired.
 
 ---
 
-## 8. Validation Checklist
+## 14. Validation Checklist
 
 Drill | Command | Expected Result
 ----- | ------- | ---------------
@@ -770,7 +770,7 @@ Monitoring | `curl http://localhost:9187/metrics` | Metrics include `pg_auto_fai
 
 ---
 
-## 9. Future Enhancements
+## 15. Future Enhancements
 
 Area | Improvement
 ---- | -----------
@@ -925,19 +925,6 @@ done
 - **Documentation**: Improve guides and examples
 - **Tooling**: Additional scripts for common operations
 
----
-
-<div align="center">
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/saifoufa1/PostgresSQL-HA/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/saifoufa1/PostgresSQL-HA/discussions)
-- **Documentation**: [Full Documentation](docs/)
-
-</div>
-
----
 
 ## 🛠️ Quick Reference
 
